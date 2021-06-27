@@ -1,3 +1,4 @@
+#data.grf/data/luafiles514/lua files/datainfo/titletables.lub
 1000 Junction of life
 1001 Specialist
 1002 Expert
@@ -45,13 +46,13 @@
 1044 Sting Slayer
 1045 Conqueror of Illusion
 1046 King Maker
-9990 The Truth Is Somewhere 
-9991 2Spooky4U 
-9992 RO's Most Talented 2018 
-9993 Cosplay Royalty 
-9994 PoringCon Fan 
-9995 Class Clown 
-9996 Pub Crawler 
-9997 Dearest Possession 
-9998 Rated Arrrrrrrrrr 
+9990 The Truth Is Somewhere
+9991 2Spooky4U
+9992 RO's Most Talented 2018
+9993 Cosplay Royalty
+9994 PoringCon Fan
+9995 Class Clown
+9996 Pub Crawler
+9997 Dearest Possession
+9998 Rated Arrrrrrrrrr
 9999 RO's Most Talented

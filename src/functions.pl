@@ -909,6 +909,7 @@ sub mainLoop_initialized {
 			message TF("Sleeping for %s\n", timeConvert($sleeptime)), "system";
 		} else {
 			$timeout_ex{'master'}{'timeout'} = $timeout{'reconnect'}{'timeout'};
+			message TF("Sleeping for %s\n", timeConvert($timeout{'reconnect'}{'timeout'})), "system";
 		}
 
 		$timeout_ex{'master'}{'time'} = time;
