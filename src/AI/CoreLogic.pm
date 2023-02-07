@@ -76,9 +76,9 @@ sub iterate {
 	processEscapeUnknownMaps();
 	Benchmark::end("AI (part 1.1)") if DEBUG;
 	Benchmark::begin("AI (part 1.2)") if DEBUG;
-	processDelayedTeleport();
 	$char->processTask("sitting");
 	$char->processTask("standing");
+	$char->processTask("teleport");
 	AI::Attack::process();
 	Benchmark::end("AI (part 1.2)") if DEBUG;
 	Benchmark::begin("AI (part 1.3)") if DEBUG;
@@ -664,22 +664,6 @@ sub processEscapeUnknownMaps {
 	}
 }
 
-##### DELAYED-TELEPORT #####
-sub processDelayedTeleport {
-	if (AI::action eq 'teleport') {
-		if ($timeout{ai_teleport_delay}{time} && timeOut($timeout{ai_teleport_delay})) {
-			# We have already successfully used the Teleport skill,
-			# and the ai_teleport_delay timeout has elapsed
-			$messageSender->sendWarpTele(26, AI::args->{lv} == 2 ? "$config{saveMap}.gat" : "Random");
-			$ai_v{temp}{clear_aiQueue} = 1;
-		} elsif (!$timeout{ai_teleport_delay}{time} && timeOut($timeout{ai_teleport_retry})) {
-			# We are still trying to use the Teleport skill
-			$messageSender->sendSkillUse(26, $char->{skills}{AL_TELEPORT}{lv}, $accountID);
-			$timeout{ai_teleport_retry}{time} = time;
-		}
-	}
-}
-
 ##### SKILL USE #####
 sub processSkillUse {
 	#FIXME: need to move closer before using skill on player,
@@ -726,13 +710,6 @@ sub processSkillUse {
 					$args->{skillID} = $skill->getIDN();
 				}
 				my $skillID = $args->{skillID};
-
-				if ($handle eq 'AL_TELEPORT') {
-					${$args->{ret}} = 'ok' if ($args->{ret});
-					AI::dequeue;
-					useTeleport($args->{lv});
-					last SKILL_USE;
-				}
 
 				$args->{skill_used} = 1;
 				$args->{giveup}{time} = time;
@@ -1355,7 +1332,7 @@ sub processAutoStorage {
 						# If we still haven't warped after a certain amount of time, fallback to walking
 						$args->{warpStart} = time unless $args->{warpStart};
 						message T("Teleporting to auto-storage\n"), "teleport";
-						useTeleport(2);
+						ai_useTeleport(2);
 					}
 					$timeout{'ai_storageAuto'}{'time'} = time;
 				} else {
@@ -1802,7 +1779,7 @@ sub processAutoSell {
 					# If we still haven't warped after a certain amount of time, fallback to walking
 					$args->{warpStart} = time unless $args->{warpStart};
 					message T("Teleporting to auto-sell\n"), "teleport";
-					useTeleport(2);
+					ai_useTeleport(2);
 				}
 				$timeout{'ai_sellAuto'}{'time'} = time;
 			} else {
@@ -2078,7 +2055,7 @@ sub processAutoBuy {
 						# If we still haven't warped after a certain amount of time, fallback to walking
 						$args->{warpStart} = time unless $args->{warpStart};
 						message T($msgneeditem."Teleporting to auto-buy\n"), "teleport";
-						useTeleport(2);
+						ai_useTeleport(2);
 					}
 					$timeout{ai_buyAuto_wait}{time} = time;
 
@@ -3393,7 +3370,7 @@ sub processAutoTeleport {
 
 		if ($ok) {
 			message T("Teleporting to avoid all players\n"), "teleport";
-			useTeleport(1);
+			ai_useTeleport(1);
 			$ai_v{temp}{clear_aiQueue} = 1;
 			$AI::Temp::Teleport_allPlayers = time;
 		}
@@ -3433,7 +3410,8 @@ sub processAutoTeleport {
 	  && !$char->{dead}
 	) {
 		message T("Teleporting due to insufficient HP/SP or too many aggressives\n"), "teleport";
-		$ai_v{temp}{clear_aiQueue} = 1 if (useTeleport(1));
+		$ai_v{temp}{clear_aiQueue} = 1;
+		ai_useTeleport(1);
 		$timeout{ai_teleport_hp}{time} = time;
 		return;
 	}
@@ -3446,7 +3424,8 @@ sub processAutoTeleport {
 			# TODO: check for dead should actually be for the whole autoteleport logic
 			if ($teleAuto == 1 && !$char->{dead}) {
 				message TF("Teleporting to avoid %s\n", $monsters{$_}{name}), "teleport";
-				$ai_v{temp}{clear_aiQueue} = 1 if (useTeleport(1));
+				$ai_v{temp}{clear_aiQueue} = 1;
+				ai_useTeleport(1);
 				$timeout{ai_teleport_away}{time} = time;
 				return;
 			} elsif ($teleAuto < 0 && !$char->{dead}) {
@@ -3456,7 +3435,8 @@ sub processAutoTeleport {
 				if ($dist <= abs($teleAuto)) {
 					if($field->canMove($myPos, $pos)) {
 						message TF("Teleporting due to monster being too close %s\n", $monsters{$_}{name}), "teleport";
-						$ai_v{temp}{clear_aiQueue} = 1 if (useTeleport(1));
+						$ai_v{temp}{clear_aiQueue} = 1;
+						ai_useTeleport(1);
 						$timeout{ai_teleport_away}{time} = time;
 						return;
 					}
@@ -3473,7 +3453,7 @@ sub processAutoTeleport {
 
 	if ($safe && $config{teleportAuto_idle} && !$ai_v{sitAuto_forcedBySitCommand} && timeOut($timeout{ai_teleport_idle})){
 		message T("Teleporting due to idle\n"), "teleport";
-		useTeleport(1);
+		ai_useTeleport(1);
 		$ai_v{temp}{clear_aiQueue} = 1;
 		$timeout{ai_teleport_idle}{time} = time;
 		return;
@@ -3485,7 +3465,8 @@ sub processAutoTeleport {
 	  && !AI::inQueue("storageAuto", "buyAuto", "sellAuto")) {
 		if (scalar(@portalsID)) {
 			message T("Teleporting to avoid portal\n"), "teleport";
-			$ai_v{temp}{clear_aiQueue} = 1 if (useTeleport(1));
+			$ai_v{temp}{clear_aiQueue} = 1;
+			ai_useTeleport(1);
 			$timeout{ai_teleport_portal}{time} = time;
 			return;
 		}
@@ -3512,7 +3493,7 @@ sub processAllowedMaps {
 		message T("Respawning to save point.\n");
 		chatLog("k", T("** Respawning to save point.\n"));
 		$ai_v{temp}{allowedMapRespawnAttempts}++;
-		useTeleport(2);
+		ai_useTeleport(2);
 		$timeout{ai_teleport}{time} = time;
 	}
 }
